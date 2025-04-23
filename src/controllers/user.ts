@@ -4,34 +4,95 @@ import {
   handleSuccess,
   handleServerError,
 } from "../helpers/index.js";
-import { Request, Response } from "express";
+import { Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { CustomRequest } from "../middleware/index.js";
 
 export default {
-  Signin: async (req: Request, res: Response) => {
+  CreateAccount: async (req: CustomRequest, res: Response) => {
     try {
-      const { username, password } = req.body;
+      const { firstName, middleName, lastName, email, phone, password } =
+        req.body;
 
-      console.log("username password", username, password);
+      // check if email is unique or not
+      const userExists = await User.findOne({ email });
+      if (userExists) {
+        handleError(res, "Email already exists", "CreateAccount");
+        return;
+      }
 
-      handleSuccess(res, { message: "Signin successful" }, "Signin");
+      const hashedPassword = await bcrypt.hash(password, 10);
+      console.log("Password : ", password);
+      console.log("Hashed Password : ", hashedPassword);
+
+      const newUser = new User({
+        firstName,
+        middleName,
+        lastName,
+        email,
+        phone,
+        password,
+      });
+      await newUser.save();
+
+      handleSuccess(res, { user: newUser }, "CreateAccount");
+    } catch (error) {
+      handleServerError(res, error, "CreateAccount");
+    }
+  },
+  Signin: async (req: CustomRequest, res: Response) => {
+    try {
+      const { email, password } = req.body;
+
+      console.log("email password => ", email, password);
+
+      // Finding that user to login... ("+select" for getting the hidden password)
+      const user = await User.findOne({ email }).select("+password");
+      console.log("User found -> ", user);
+      //  IF GIVEN email DOESN'T EXIST...
+      if (!user) {
+        handleError(res, "User not found", "Signin");
+        return;
+      }
+      // MATCHING PASSWORD...
+      const isCorrect = await bcrypt.compare(password, user?.password);
+      console.log("Matching => ", isCorrect);
+
+      if (!isCorrect) {
+        //   WRONG PASSWORD.....
+        handleError(res, "Wrong credentials! Try again..", "Signin");
+        return;
+      }
+
+      //   GENERATING TOKEN AFTER LOGIN...
+      const token = jwt.sign({ _id: user?._id }, process.env?.JWT_SECRET!);
+
+      handleSuccess(res, { message: "Signin successful", token }, "Signin");
     } catch (error) {
       handleServerError(res, error, "Signin");
     }
   },
-  CreateAccount: async (req: Request, res: Response) => {
+  Signout: async (req: CustomRequest, res: Response) => {
     try {
-      const newUser = new User({
-        firstName: "Md",
-        lastName: "Asif",
-        email: "asif@gmail.com",
-        phone: "03321234567",
-        password: "password",
-      });
-      await newUser.save();
-
-      handleSuccess(res, newUser, "CreateAccount");
+      handleSuccess(res, "User logged out successfully.", "Signout");
     } catch (error) {
-      handleServerError(res, error, "CreateAccount");
+      handleServerError(res, error, "Signout");
+    }
+  },
+  GetProfile: async (req: CustomRequest, res: Response) => {
+    try {
+      const user_id = req._id;
+
+      const user = await User.findById(user_id);
+      if (!user) {
+        handleError(res, "User not found.", "GetProfile");
+        return;
+      }
+
+      handleSuccess(res, { user }, "GetProfile");
+    } catch (error) {
+      handleServerError(res, error, "GetProfile");
     }
   },
 };

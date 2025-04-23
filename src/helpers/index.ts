@@ -10,7 +10,7 @@ export const handleError = (res: Response, error: any, method: string) => {
   // Handle success response
   console.log(`Error in method: ${method}, Error : `, error || "None");
 
-  return res.status(400).json({ error: error.message });
+  return res.status(400).json({ error: error });
 };
 
 export const handleServerError = (
