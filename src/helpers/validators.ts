@@ -28,11 +28,68 @@ const userSchema = Joi.object({
   }),
 });
 
-const userIdSchema = Joi.object({
-  userId: Joi.string().guid({ version: "uuidv4" }).required().messages({
-    "string.guid": "User ID must be a valid UUID",
-    "any.required": "User ID is required",
+const productSchema = Joi.object({
+  productName: Joi.string().min(2).required().messages({
+    "string.min": "Product name must be at least 2 characters long",
+    "any.required": "Product name is required",
   }),
+  productType: Joi.string().min(2).required().messages({
+    "string.min": "Product type must be at least 2 characters long",
+    "any.required": "Product type is required",
+  }),
+  supplierId: Joi.string().min(2).required().messages({
+    "string.min": "Supplier ID must be at least 2 characters long",
+    "any.required": "Supplier ID is required",
+  }),
+  quantity: Joi.number().min(1).required().messages({
+    "number.min": "Quantity must be at least 1",
+    "any.required": "Quantity is required",
+  }),
+  price: Joi.number().min(0).required().messages({
+    "number.min": "Price must be positive",
+    "any.required": "Price is required",
+  }),
+  sellingPrice: Joi.number().min(0).required().messages({
+    "number.min": "Selling price must be positive",
+    "any.required": "Selling price is required",
+  }),
+});
+
+const taskSchema = Joi.object({
+  taskType: Joi.string()
+    .valid(["Order-related", "Shipment-related", "Payment-related", "Others"])
+    .required()
+    .messages({
+      "any.only": "Please enter a valid type of the task",
+    }),
+  assignee: Joi.string().required().message("Please enter a assignee"),
+  priorityLevel: Joi.string()
+    .valid(["Critical", "High", "Moderate", "Low"])
+    .required()
+    .message("Please enter a valid priority level"),
+  description: Joi.string()
+    .min(5)
+    .optional()
+    .message("Please enter a long enough description"),
+  dueDate: Joi.date().required().message("Please enter a valid date"),
+  location: Joi.string().required().message("Please enter a valid location"),
+});
+
+const blogSchema = Joi.object({
+  title: Joi.string().min(5).required().messages({
+    "string.min": "Blog title is too short",
+    "any.required": "Blog title is required",
+  }),
+  image: Joi.string().min(5).optional(),
+  description: Joi.string().min(5).required().messages({
+    "string.min": "Blog description is too short",
+    "any.required": "description is required",
+  }),
+});
+
+const blogParamSchema = Joi.object({
+  page: Joi.number().min(1).default(1).required(),
+  offset: Joi.number().min(0).default(10).required(),
 });
 
 //  validate request body parameters
@@ -54,7 +111,8 @@ const validateParams = (schema: Joi.ObjectSchema) => {
     const { error } = schema.validate(req.params, { abortEarly: false });
     if (error) {
       const errors = error.details.map((detail) => detail.message);
-      return res.status(400).json({ errors });
+      res.status(400).json({ errors });
+      return;
     }
     next();
   };
@@ -62,3 +120,7 @@ const validateParams = (schema: Joi.ObjectSchema) => {
 
 //  actual functions to call in express routes
 export const validateUser = validateBody(userSchema);
+export const validateBlog = validateBody(blogSchema);
+export const validateBlogParam = validateParams(blogParamSchema);
+export const validateProduct = validateBody(productSchema);
+export const validateTask = validateBody(taskSchema);
