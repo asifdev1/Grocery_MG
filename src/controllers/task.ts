@@ -1,18 +1,27 @@
 import { Response } from "express";
-import { CustomRequest } from "../middleware";
-import { Task } from "../models";
-import { handleServerError, handleSuccess } from "../helpers";
+import { CustomRequest } from "../middleware/index.js";
+import { Task } from "../models/index.js";
+import { handleServerError, handleSuccess } from "../helpers/index.js";
 
 export default {
   CreateTask: async (req: CustomRequest, res: Response) => {
     try {
-      const { title, description, dueDate, priority } = req.body;
-      const newTask = await Task.create({
-        title,
+      const {
+        taskType,
         description,
         dueDate,
-        priority,
-        createdBy: req._id,
+        priorityLevel,
+        assignee,
+        location,
+      } = req.body;
+
+      const newTask = await Task.create({
+        taskType,
+        assignee,
+        location,
+        description,
+        dueDate,
+        priorityLevel,
       });
 
       handleSuccess(
@@ -22,6 +31,21 @@ export default {
       );
     } catch (error) {
       handleServerError(res, error, "CreateTask");
+    }
+  },
+
+  //  api to simply fetch tasks using page and offset query
+  GetTasks: async (req: CustomRequest, res: Response) => {
+    try {
+      const { page, offset } = req.query;
+      const tasks = await Task.find({})
+        .skip(Number(offset) * (Number(page) - 1))
+        .limit(Number(offset))
+        .sort({ createdAt: -1 });
+
+      handleSuccess(res, { tasks }, "GetTasks");
+    } catch (error) {
+      handleServerError(res, error, "GetTasks");
     }
   },
 };

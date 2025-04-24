@@ -57,22 +57,18 @@ const productSchema = Joi.object({
 
 const taskSchema = Joi.object({
   taskType: Joi.string()
-    .valid(["Order-related", "Shipment-related", "Payment-related", "Others"])
+    .valid("Order-related", "Shipment-related", "Payment-related", "Others")
     .required()
     .messages({
       "any.only": "Please enter a valid type of the task",
     }),
-  assignee: Joi.string().required().message("Please enter a assignee"),
+  assignee: Joi.string().required(),
   priorityLevel: Joi.string()
-    .valid(["Critical", "High", "Moderate", "Low"])
-    .required()
-    .message("Please enter a valid priority level"),
-  description: Joi.string()
-    .min(5)
-    .optional()
-    .message("Please enter a long enough description"),
-  dueDate: Joi.date().required().message("Please enter a valid date"),
-  location: Joi.string().required().message("Please enter a valid location"),
+    .valid("Critical", "High", "Moderate", "Low")
+    .required(),
+  description: Joi.string().min(5).optional(),
+  dueDate: Joi.date().required(),
+  location: Joi.string().required(),
 });
 
 const blogSchema = Joi.object({
@@ -85,11 +81,6 @@ const blogSchema = Joi.object({
     "string.min": "Blog description is too short",
     "any.required": "description is required",
   }),
-});
-
-const blogParamSchema = Joi.object({
-  page: Joi.number().min(1).default(1).required(),
-  offset: Joi.number().min(0).default(10).required(),
 });
 
 //  validate request body parameters
@@ -121,6 +112,5 @@ const validateParams = (schema: Joi.ObjectSchema) => {
 //  actual functions to call in express routes
 export const validateUser = validateBody(userSchema);
 export const validateBlog = validateBody(blogSchema);
-export const validateBlogParam = validateParams(blogParamSchema);
 export const validateProduct = validateBody(productSchema);
 export const validateTask = validateBody(taskSchema);

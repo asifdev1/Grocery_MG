@@ -1,10 +1,59 @@
 import { Response } from "express";
-import { CustomRequest } from "../middleware";
-import { handleServerError, handleSuccess } from "../helpers";
-import Order from "../models/order";
+import { CustomRequest } from "../middleware/index.js";
+import { handleServerError, handleSuccess } from "../helpers/index.js";
+import { Order } from "../models/index.js";
 import moment from "moment";
 
 export default {
+  //  write a simple createOrder api with the required fields in body
+  CreateOrder: async (req: CustomRequest, res: Response) => {
+    try {
+      const {
+        customerId,
+        productId,
+        productName,
+        supplierId,
+        supplierName,
+        quantity,
+        price,
+        deliveryDate,
+      } = req.body;
+
+      const newOrder = await Order.create({
+        customerId,
+        productId,
+        productName,
+        supplierId,
+        supplierName,
+        quantity,
+        price,
+        deliveryDate,
+        status: "Pending",
+        createdBy: req._id,
+      });
+      handleSuccess(res, { orderId: newOrder?._id }, "CreateOrder");
+    } catch (error) {
+      handleServerError(res, error, "CreateOrder");
+    }
+  },
+
+  //  write a simple updateOrder api to update fields of an order by order_id
+  UpdateOrder: async (req: CustomRequest, res: Response) => {
+    try {
+      const { orderId, fieldsToUpdate } = req.body;
+      const updatedOrder = await Order.findByIdAndUpdate(
+        orderId,
+        fieldsToUpdate,
+        {
+          new: true,
+        }
+      );
+      handleSuccess(res, updatedOrder, "UpdateOrder");
+    } catch (error) {
+      handleServerError(res, error, "UpdateOrder");
+    }
+  },
+
   GetOrderSummary: async (req: CustomRequest, res: Response) => {
     try {
       const { startDate, endDate, type } = req.query;
@@ -35,7 +84,7 @@ export default {
           $lte: toDate,
         },
         status: {
-          $or: ["Pending", "In-transit"],
+          $in: ["Pending", "In-transit"],
         },
       }).countDocuments();
 
@@ -45,7 +94,7 @@ export default {
           $lte: toDate,
         },
         status: {
-          $or: ["Delivered", "Failed"],
+          $in: ["Delivered", "Failed"],
         },
       }).countDocuments();
 
@@ -61,16 +110,29 @@ export default {
 
   GetShipmentCounts: async (req: CustomRequest, res: Response) => {
     try {
-      //  using mongodb aggregation count the number of orders catgegorized by status
-      const shipmentCounts = await Order.aggregate([
-        { $group: { _id: "$status", count: { $sum: 1 } } },
-      ]);
-
       const totalCount = await Order.find().countDocuments();
+      const pendingCount = await Order.find({
+        status: "Pending",
+      }).countDocuments();
+      const completedCount = await Order.find({
+        status: "Completed",
+      }).countDocuments();
+      const inTransitCount = await Order.find({
+        status: "In-transit",
+      }).countDocuments();
+      const failedCount = await Order.find({
+        status: "Failed",
+      }).countDocuments();
 
       handleSuccess(
         res,
-        { ...shipmentCounts, Total: totalCount },
+        {
+          Total: totalCount,
+          Pending: pendingCount,
+          completed: completedCount,
+          inTransit: inTransitCount,
+          failed: failedCount,
+        },
         "GetShipmentCounts"
       );
     } catch (error) {
@@ -82,13 +144,39 @@ export default {
     try {
       const { page = 1, offset = 10, status = "" } = req.query;
 
-      const shipmentDetails = await Order.find({ status })
+      const shipmentDetails = await Order.find(status ? { status } : {})
         .skip(Number(offset) * (Number(page) - 1))
         .limit(Number(offset));
 
       handleSuccess(res, { shipmentDetails }, "GetShipmentDetails");
     } catch (error) {
       handleServerError(res, error, "GetShipmentDetails");
+    }
+  },
+
+  GetDailyOrders: async (req: CustomRequest, res: Response) => {
+    try {
+      //  get order count group by dates using createdAt
+      const dailyOrders = await Order.aggregate([
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            date: "$_id",
+            _id: 0,
+            count: 1,
+          },
+        },
+        { $sort: { date: -1 } },
+      ]);
+
+      handleSuccess(res, dailyOrders, "GetDailyOrders");
+    } catch (error) {
+      handleServerError(res, error, "GetDailyOrders");
     }
   },
 };

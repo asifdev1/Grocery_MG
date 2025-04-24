@@ -1,27 +1,36 @@
 import { Response } from "express";
-import { CustomRequest } from "../middleware";
-import { handleServerError, handleSuccess } from "../helpers";
-import { Blog } from "../models";
+import { CustomRequest } from "../middleware/index.js";
+import { handleServerError, handleSuccess } from "../helpers/index.js";
+import { Blog } from "../models/index.js";
 
 export default {
   UploadBlog: async (req: CustomRequest, res: Response) => {
     try {
       const { image, title, description } = req.body;
 
-      await Blog.create({ image, title, description, createdBy: req._id });
+      const newBlog = await Blog.create({
+        image,
+        title,
+        description,
+        createdBy: req._id,
+      });
+
       handleSuccess(
         res,
-        { message: "Blog uploaded successfully" },
+        { message: "Blog uploaded successfully", blogId: newBlog?._id },
         "UploadBlog"
       );
     } catch (error) {
       handleServerError(res, error, "UploadBlog");
     }
   },
+
   GetBlogs: async (req: CustomRequest, res: Response) => {
     try {
-      const { page, offset } = req.query;
+      const { page = 1, offset = 10 } = req.query;
+
       const blogs = await Blog.find({})
+        .sort({ createdAt: -1 })
         .skip((Number(page) - 1) * Number(offset))
         .limit(Number(offset));
 
@@ -30,14 +39,18 @@ export default {
       handleServerError(res, error, "UploadBlog");
     }
   },
+
   GetSingleBlog: async (req: CustomRequest, res: Response) => {
     try {
-      if (!req.params.id)
-        return res.status(400).json({ error: "Provide a blog id" });
+      if (!req.params.id) {
+        res.status(400).json({ error: "Provide a blog id" });
+        return;
+      }
 
       const blog = await Blog.findById(req.params.id);
       if (!blog) {
-        return res.status(404).json({ error: "Blog not found" });
+        res.status(404).json({ error: "Blog not found" });
+        return;
       }
       handleSuccess(res, { blog }, "GetSingleBlog");
     } catch (error) {

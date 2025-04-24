@@ -8,7 +8,8 @@ const router = express.Router();
 router
   .route("/inventory")
   .post(middleware, validateProduct, stockCont.AddStock);
-router.route("/inventory/newStock").get(stockCont?.GetNewStocks);
-router.route("/inventory/summary").get(stockCont?.GetStockSummary);
+router.route("/stockDetails").get(middleware, stockCont?.GetStockDetails);
+router.route("/inventory/newStock").get(middleware, stockCont?.GetNewStocks);
+router.route("/inventory/summary").get(middleware, stockCont?.GetStockSummary);
 
 export default router;

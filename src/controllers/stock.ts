@@ -1,7 +1,7 @@
 import { Response } from "express";
-import { CustomRequest } from "../middleware";
-import { handleServerError, handleSuccess } from "../helpers";
-import { Product } from "../models";
+import { CustomRequest } from "../middleware/index.js";
+import { handleServerError, handleSuccess } from "../helpers/index.js";
+import { Product, Order } from "../models/index.js";
 import moment from "moment";
 
 export default {
@@ -33,7 +33,7 @@ export default {
 
   GetStockDetails: async (req: CustomRequest, res: Response) => {
     try {
-      const { page, offset, status } = req.query;
+      const { page = 1, offset = 10, status = "" } = req.query;
 
       let matchCondition = {};
 
@@ -89,30 +89,47 @@ export default {
     }
   },
 
-  // GetStockSummary: async (req: CustomRequest, res: Response) => {
-  //   try {
-  //     const totalStock = await Product.find().countDocuments();
-  //     const lowStock = await Product.find({
-  //       quantity: {
-  //         $lt: 10,
-  //       },
-  //     }).countDocuments();
-  //     const outOfStock = await Product.find({
-  //       quantity: 0,
-  //     }).countDocuments();
+  GetStockSummary: async (req: CustomRequest, res: Response) => {
+    try {
+      const totalStock = await Product.find().countDocuments();
+      const lowStock = await Product.find({
+        quantity: {
+          $lt: 10,
+        },
+      }).countDocuments();
+      const outOfStock = await Product.find({
+        quantity: 0,
+      }).countDocuments();
 
-  //       const HighDemandStock = await Product.aggregate([
-  //         {
-  //           $lookup : {
-  //             from : "Order",
-  //             localField : "_id",
-  //             foreignField : "productId",
-  //             as : "orderDetails"
-  //           }
-  //         }
-  //       ])
-  //   } catch (error) {
-  //     handleServerError(res, error, "GetStockSummary");
-  //   }a
-  // },
+      const highDemandStock = await Order.aggregate([
+        {
+          $group: {
+            _id: "$productId",
+            total: { $sum: "$quantity" },
+          },
+        },
+        {
+          $match: {
+            total: { $gt: 100 },
+          },
+        },
+        {
+          $count: "numProducts",
+        },
+      ]);
+
+      handleSuccess(
+        res,
+        {
+          totalStock,
+          lowStock,
+          outOfStock,
+          highDemandStock: highDemandStock[0]?.numProducts,
+        },
+        "GetStockSummary"
+      );
+    } catch (error) {
+      handleServerError(res, error, "GetStockSummary");
+    }
+  },
 };
