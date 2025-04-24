@@ -8,5 +8,6 @@ const router = express.Router();
 router.route("/create-account").post(validateUser, userCont.CreateAccount);
 router.route("/signin").post(userCont.Signin);
 router.route("/profile").get(middleware, userCont.GetProfile);
+router.route("/signout").post(middleware, userCont.Signout);
 
 export default router;

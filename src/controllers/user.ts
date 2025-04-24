@@ -1,4 +1,4 @@
-import { User } from "../models/index.js";
+import { Token, User } from "../models/index.js";
 import {
   handleError,
   handleSuccess,
@@ -8,6 +8,7 @@ import { Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { CustomRequest } from "../middleware/index.js";
+import moment from "moment";
 
 export default {
   CreateAccount: async (req: CustomRequest, res: Response) => {
@@ -67,6 +68,10 @@ export default {
 
       //   GENERATING TOKEN AFTER LOGIN...
       const token = jwt.sign({ _id: user?._id }, process.env?.JWT_SECRET!);
+      await Token.create({
+        token,
+        expires: moment().add(10, "minutes").toDate(),
+      });
 
       handleSuccess(res, { message: "Signin successful", token }, "Signin");
     } catch (error) {
@@ -75,6 +80,14 @@ export default {
   },
   Signout: async (req: CustomRequest, res: Response) => {
     try {
+      // LOGOUT USER...
+      const token = req.header("Authorization")?.replace("Bearer ", "");
+      console.log(token);
+
+      await Token.deleteOne({
+        token,
+      });
+
       handleSuccess(res, "User logged out successfully.", "Signout");
     } catch (error) {
       handleServerError(res, error, "Signout");
