@@ -37,7 +37,11 @@ export default {
       });
       await newUser.save();
 
-      handleSuccess(res, { user: newUser }, "CreateAccount");
+      handleSuccess(
+        res,
+        { message: "User created successfully" },
+        "CreateAccount"
+      );
     } catch (error) {
       handleServerError(res, error, "CreateAccount");
     }
